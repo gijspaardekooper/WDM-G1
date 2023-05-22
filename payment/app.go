@@ -87,7 +87,6 @@ func getUser(userID string) (error, *User) {
 	if err != nil {
 		return err, nil
 	}
-	// fmt.Printf("Found user: %+v\n", user)
 	user.UserID = userID
 	return nil, &user
 }
@@ -131,7 +130,6 @@ func payHandler(w http.ResponseWriter, r *http.Request) {
 	callback := func(sessCtx mongo.SessionContext) (interface{}, error) {
 		getuserErr, user := getUser(userID)
 		if getuserErr != nil {
-			// fmt.Printf("Get item error")
 			w.WriteHeader(http.StatusBadRequest)
 			return nil, getuserErr
 		}
@@ -168,7 +166,6 @@ func payHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	session, startSessionErr := client.StartSession()
-	// fmt.Printf("Started session")
 	if startSessionErr != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -237,7 +234,6 @@ func cancelPaymentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	session, startSessionErr := client.StartSession()
-	// fmt.Printf("Started session")
 	if startSessionErr != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
