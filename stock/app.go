@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/segmentio/kafka-go"
 	"log"
 	"net/http"
 	"os"
@@ -28,40 +27,12 @@ type Item struct {
 var client *mongo.Client
 var stockCollection *mongo.Collection
 
-// var ctx context.Context
-// var cancel context.CancelFunc
-
-func startKafkaConsumer() {
-	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:  []string{"localhost:9092"},
-		GroupID:  "my-group",
-		Topic:    "wdm-test",
-		MinBytes: 10e3, // 10KB
-		MaxBytes: 10e6, // 10MB
-	})
-
-	go func() {
-		for {
-			msg, err := reader.ReadMessage(context.Background())
-			if err != nil {
-				log.Fatalf("Failed to read messages from Kafka: %v", err)
-			}
-			fmt.Printf("Message received: key = %s, value = %s\n", string(msg.Key), string(msg.Value))
-
-			// TODO: Here is where you handle the Kafka message.
-			// This could involve triggering other microservice actions or updating the state of this microservice.
-		}
-	}()
-}
-
 func main() {
-	startKafkaConsumer()
-
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	var err error
-	client, err = mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017"))
+	client, err = mongo.Connect(ctx, options.Client().ApplyURI("mongodb://mongodb-stock-service:27017"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -102,26 +73,10 @@ func getItem(itemID string) (error, *Item) {
 	return nil, &item
 }
 
-// func updateItemStock(item Item) bool {
-//	documentID := ConvertStringToMongoID(item.StockID)
-//	update := bson.M{
-//		"$set": bson.M{
-//			"stock": item.Stock,
-//		},
-//	}
-//	_, updateErr := stockCollection.UpdateOne(context.Background(), bson.M{"_id": documentID}, update)
-//	if updateErr != nil {
-//		log.Fatal(updateErr)
-//		return false
-//	}
-//	return true
-// }
-
 func findHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	itemID := vars["item_id"]
 
-	// fmt.Printf("Find: %s\n", itemID)
 	findErr, item := getItem(itemID)
 	if findErr != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -211,7 +166,6 @@ func addHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	_, updateErr := stockCollection.UpdateOne(context.Background(), filter, update)
 	for updateErr != nil {
-		// fmt.Printf("Retrying adding item...")
 		_, updateErr = stockCollection.UpdateOne(context.Background(), filter, update)
 	}
 }
@@ -224,7 +178,6 @@ func createHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	// fmt.Printf("Creating item with price %s\n", price)
 	stock := Item{
 		Stock: 0,
 		Price: priceFloat,
@@ -235,7 +188,6 @@ func createHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	stockID := result.InsertedID.(primitive.ObjectID).Hex()
-	// fmt.Printf("Created a new item with ID: %s\n", stockID)
 	stock.StockID = stockID
 
 	w.Header().Set("Content-Type", "application/json")
