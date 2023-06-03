@@ -48,7 +48,7 @@ func main() {
 
 	var err error
 	// TODO: implement hash
-	//client, err = mongo.Connect(ctx, options.Client().ApplyURI("mongodb://orderdb-svc-0:27017"))
+	// client, err = mongo.Connect(ctx, options.Client().ApplyURI("mongodb://orderdb-svc-0:27017"))
 	client, err = mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017"))
 
 	if err != nil {
@@ -80,9 +80,13 @@ func main() {
 }
 
 func getOrder(orderID *primitive.ObjectID) (error, *shared.Order) {
+	return getOrderWithContext(orderID, context.Background())
+}
+
+func getOrderWithContext(orderID *primitive.ObjectID, ctx context.Context) (error, *shared.Order) {
 	filter := bson.M{"_id": orderID}
 	var order shared.Order
-	findDocErr := ordersCollection.FindOne(context.Background(), filter).Decode(&order)
+	findDocErr := ordersCollection.FindOne(ctx, filter).Decode(&order)
 	if findDocErr != nil {
 		return findDocErr, nil
 	}

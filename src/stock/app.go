@@ -116,8 +116,12 @@ func main() {
 }
 
 func getItem(documentID *primitive.ObjectID) (error, *shared.Item) {
+	return getItemWithContext(documentID, context.Background())
+}
+
+func getItemWithContext(documentID *primitive.ObjectID, ctx context.Context) (error, *shared.Item) {
 	var item shared.Item
-	err := stockCollection.FindOne(context.Background(), bson.M{"_id": documentID}).Decode(&item)
+	err := stockCollection.FindOne(ctx, bson.M{"_id": documentID}).Decode(&item)
 	if err != nil {
 		return err, nil
 	}
@@ -219,7 +223,7 @@ func subtractHandler(w http.ResponseWriter, r *http.Request) {
 func subtract(changes []ItemChange) (clientError error, serverError error) {
 	callback := func(sessCtx mongo.SessionContext) (interface{}, error) {
 		for _, change := range changes {
-			getItemErr, item := getItem(change.itemID)
+			getItemErr, item := getItemWithContext(change.itemID, sessCtx)
 			if getItemErr != nil {
 				return nil, getItemErr
 			}

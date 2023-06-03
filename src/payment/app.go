@@ -104,8 +104,12 @@ func main() {
 }
 
 func getUser(documentID *primitive.ObjectID) (error, *shared.User) {
+	return getUserWithContext(documentID, context.Background())
+}
+
+func getUserWithContext(documentID *primitive.ObjectID, ctx context.Context) (error, *shared.User) {
 	var user shared.User
-	err := userCollection.FindOne(context.Background(), bson.M{"_id": documentID}).Decode(&user)
+	err := userCollection.FindOne(ctx, bson.M{"_id": documentID}).Decode(&user)
 	if err != nil {
 		return err, nil
 	}
@@ -114,9 +118,13 @@ func getUser(documentID *primitive.ObjectID) (error, *shared.User) {
 }
 
 func getPayment(userID *primitive.ObjectID, orderID *primitive.ObjectID) (error, *shared.Payment) {
+	return getPaymentWithContext(userID, orderID, context.Background())
+}
+
+func getPaymentWithContext(userID *primitive.ObjectID, orderID *primitive.ObjectID, ctx context.Context) (error, *shared.Payment) {
 	filter := bson.M{"userid": userID, "orderid": orderID}
 	var payment shared.Payment
-	findErr := paymentCollection.FindOne(context.Background(), filter).Decode(&payment)
+	findErr := paymentCollection.FindOne(ctx, filter).Decode(&payment)
 	if findErr != nil {
 		return findErr, nil
 	}
@@ -280,7 +288,7 @@ func payHandler(w http.ResponseWriter, r *http.Request) {
 
 func pay(userID *primitive.ObjectID, orderID *primitive.ObjectID, amount *float64) (clientError error, serverError error) {
 	callback := func(sessCtx mongo.SessionContext) (interface{}, error) {
-		getuserErr, user := getUser(userID)
+		getuserErr, user := getUserWithContext(userID, sessCtx)
 		if getuserErr != nil {
 			return nil, getuserErr
 		}
@@ -334,8 +342,6 @@ func cancelPaymentHandler(w http.ResponseWriter, r *http.Request) {
 	userID := vars["user_id"]
 	orderID := vars["order_id"]
 
-	// TODO: send kafka message to cancel order
-
 	userIdConvErr, mongoUserID := shared.ConvertStringToMongoID(userID)
 	if userIdConvErr != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -361,7 +367,7 @@ func cancelPaymentHandler(w http.ResponseWriter, r *http.Request) {
 
 func cancelPayment(userID *primitive.ObjectID, orderID *primitive.ObjectID) (clientError error, serverError error) {
 	callback := func(sessCtx mongo.SessionContext) (interface{}, error) {
-		getPaymentErr, payment := getPayment(userID, orderID)
+		getPaymentErr, payment := getPaymentWithContext(userID, orderID, sessCtx)
 		if getPaymentErr != nil {
 			return nil, getPaymentErr
 		}
